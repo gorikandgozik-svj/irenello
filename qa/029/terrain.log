@@ -1,0 +1,11 @@
+DEM 85 202554 {
+  instances: 0,
+  calls: 24,
+  triangles: 55296,
+  shadowCalls: 0,
+  reflectionCalls: 0,
+  candidates: 0,
+  pipeline: 'forward'
+}
+b'llvmpipe (LLVM 19.1.7, 256 bits)'
+saved real-terrain RGBA SHA256 28a55313ae7d82d30415321e5fcb322f3b7b9ff3e5de631eeba37a95461c937e

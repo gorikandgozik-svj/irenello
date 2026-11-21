@@ -1,0 +1,26 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SKERRY • Материалы</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#171d22;color:#edf3f4;font:16px system-ui}canvas{display:block;width:100vw;height:80vh}button,output{margin:1rem;padding:.5rem}a{color:inherit}</style><canvas></canvas><label>Выборок на пиксель <select><option>4</option><option selected>16</option><option>64</option></select></label><button>Рассчитать фото 480 × 270</button><output></output><script src="SkerrySDK.js"></script><script>
+async function main(){
+ const game=new SKERRY.Game(document.querySelector('canvas'),{photo:true}),world=game.world;
+ const model=new SKERRY.Geometry(),material=(color,rough,metal=0)=>({color,rough,metal});
+ model.box(material([.38,.39,.37],.66),[0,-.26,0],[13,.5,9]);
+ model.box(material([.7,.20,.085],.74),[-4,1.5,-.4],[.16,3,6]);
+ for(const [i,style] of [material([.82,.21,.046],.22,.55),material([.83,.87,.94],.10,.96),material([.16,.37,.43],.74)].entries()){
+  model.ellipsoid(style,[(i-1)*1.8,.82,0],[.81,.81,.81],28,16)
+ }
+ world.root.attach(new SKERRY.GameNode('Sample',await game.upload(model)));
+ world.camera=SKERRY.basis([3.6,2.15,6.4],[0,.64,0]);world.sun=[.46,.80,.39];world.focus=[0,.6,0];world.fov=.33;
+ world.lights.push({position:[-2,2,2.5],color:[1,.74,.52],intensity:30,range:10});game.start();
+ const button=document.querySelector('button'),status=document.querySelector('output');
+ button.onclick=async()=>{
+  button.disabled=true;status.textContent='Расчёт отражений и непрямого света…';
+  try{
+   const width=480,height=270,pixels=await game.photo({width,height,samples:Number(document.querySelector("select").value),bounces:4});
+   const out=document.createElement('canvas');out.width=width;out.height=height;
+   out.getContext('2d').putImageData(new ImageData(pixels,width,height),0,0);
+   const link=document.createElement('a');link.download='SKERRY-photo.png';link.href=out.toDataURL();link.textContent='Скачать PNG';status.replaceChildren(link)
+  }catch(e){status.textContent=e.message}finally{button.disabled=false}
+ }
+}
+main().catch(e=>document.querySelector('output').textContent=e.message)
+</script></html>

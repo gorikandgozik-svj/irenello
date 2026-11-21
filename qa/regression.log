@@ -1,0 +1,24 @@
+OK: offline bundle, all five modes, terrain flight, cameras, impulse, project editor and 4K buffer.
+OK: fixed step, stall cap, scene systems, tile geometry, shared edges, lighthouse indices.
+OK: permanent local impact, interpolation onto chassis, analog throttle, stress tiers.
+OK: import, duplicate, transform, portable project round trip, rejected invalid project preserves objects.
+OK: isolated ECS, seeded shared tile edge, real worker transfer, pending teleport, resource disposal, deterministic BVH photo.
+OK: static and dynamic contacts, restitution, rest, ray hit, swept sphere against thin wall, rounded corner miss, OBB impulse, spring, lift/drag/stall, jump, frustum/LOD.
+OK: standalone SDK, transforms, cycle rejection, visibility, reparenting, updates.
+OK: GLB and external glTF, texture and hierarchy, steering, braking, laps, wheel transforms, dateline, camera frames, DEM, terrain clearance, tangent space.
+OK: offline bundle, all five modes, terrain flight, cameras, impulse, project editor and 4K buffer.
+OK: fixed step, stall cap, scene systems, tile geometry, shared edges, lighthouse indices.
+OK: permanent local impact, interpolation onto chassis, analog throttle, stress tiers.
+OK: import, duplicate, transform, portable project round trip, rejected invalid project preserves objects.
+OK: isolated ECS, seeded shared tile edge, real worker transfer, pending teleport, resource disposal, deterministic BVH photo.
+OK: static and dynamic contacts, restitution, rest, ray hit, swept sphere against thin wall, rounded corner miss, OBB impulse, spring, lift/drag/stall, jump, frustum/LOD.
+OK: standalone SDK, transforms, cycle rejection, visibility, reparenting, updates.
+OK: GLB and external glTF, texture and hierarchy, steering, braking, laps, wheel transforms, dateline, camera frames, DEM, terrain clearance, tangent space.
+OK: offline bundle, all five modes, terrain flight, cameras, impulse, project editor and 4K buffer.
+OK: fixed step, stall cap, scene systems, tile geometry, shared edges, lighthouse indices.
+OK: permanent local impact, interpolation onto chassis, analog throttle, stress tiers.
+OK: import, duplicate, transform, portable project round trip, rejected invalid project preserves objects.
+OK: isolated ECS, seeded shared tile edge, real worker transfer, pending teleport, resource disposal, deterministic BVH photo.
+OK: static and dynamic contacts, restitution, rest, ray hit, swept sphere against thin wall, rounded corner miss, OBB impulse, spring, lift/drag/stall, jump, frustum/LOD.
+OK: standalone SDK, transforms, cycle rejection, visibility, reparenting, updates.
+OK: GLB and external glTF, texture and hierarchy, steering, braking, laps, wheel transforms, dateline, camera frames, DEM, terrain clearance, tangent space.

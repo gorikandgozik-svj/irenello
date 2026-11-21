@@ -1,0 +1,44 @@
+{
+  "stage": "2.5",
+  "version": "0.25",
+  "driver": "Mesa llvmpipe LLVM 19.1.7, surfaceless GLES",
+  "raster_size": [
+    3840,
+    2160
+  ],
+  "export_size": [
+    6144,
+    3456
+  ],
+  "static_instances": 8861,
+  "race_instances_submitted": 2124,
+  "race_candidates_after_cell_cull": 2659,
+  "race_main_geometry_triangles": 96532,
+  "draw_calls": {
+    "instanced": {
+      "geometry": 51,
+      "shadow": 42,
+      "reflection_geometry": 46
+    },
+    "individual": {
+      "geometry": 2649,
+      "shadow": 731,
+      "reflection_geometry": 2664
+    }
+  },
+  "instanced_and_individual_decoded_jpegs_equal": true,
+  "six_k_to_four_k_mean_absolute_RGB_error_0_to_255": [
+    1.5817906057098765,
+    1.421136429398148,
+    1.7228173225308643
+  ],
+  "warm_1280x720_replay_ms": [
+    89.8,
+    107.6,
+    89.1,
+    86.7,
+    87.0
+  ],
+  "physical_android_tested": false,
+  "physical_gpu_tested": false
+}

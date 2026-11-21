@@ -1,0 +1,38 @@
+mobile {
+  instances: 2048,
+  calls: 1,
+  triangles: 1179648,
+  shadowCalls: 0,
+  reflectionCalls: 0,
+  candidates: 0,
+  pipeline: 'forward'
+}
+aa {
+  instances: 2048,
+  calls: 1,
+  triangles: 8388608,
+  shadowCalls: 0,
+  reflectionCalls: 0,
+  candidates: 0,
+  pipeline: 'deferred',
+  lights: 0,
+  tileOverflow: 0
+}
+ultra {
+  instances: 2048,
+  calls: 1,
+  triangles: 25690112,
+  shadowCalls: 0,
+  reflectionCalls: 0,
+  candidates: 0,
+  pipeline: 'deferred',
+  lights: 0,
+  tileOverflow: 0
+}
+b'llvmpipe (LLVM 19.1.7, 256 bits)'
+Frame ms (driver replay): 207.8
+saved mobile RGBA SHA256 2b71d7962b5bfe83ee52f7cfb6fe3d4d82ce01729a3c49934cf88d8372e256cc
+Frame ms (driver replay): 1540.8
+saved aa RGBA SHA256 f9abecb0128a0a2469b19aab4012a62b878427f271aed906cadee545dc674df4
+Frame ms (driver replay): 2861.9
+saved ultra RGBA SHA256 f6aad809679e3cc9b2157ffb64f00a2d636f845d05d702a6c017927c9c06f71c

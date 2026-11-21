@@ -1,0 +1,67 @@
+[gd_scene format=3]
+[ext_resource type="BoxMesh" path="res://block.tres" id="1"]
+[sub_resource type="BoxShape3D" id="shape"]
+[node name="Sector" type="Node3D"]
+[node name="House1" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(16,10,16)
+scale = Vector3(17,20,13)
+[node name="Body" type="StaticBody3D" parent="House1"]
+[node name="Collision" type="CollisionShape3D" parent="House1/Body"]
+shape = SubResource("shape")
+[node name="House2" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(16,20.5,48)
+scale = Vector3(20,41,15)
+[node name="Body" type="StaticBody3D" parent="House2"]
+[node name="Collision" type="CollisionShape3D" parent="House2/Body"]
+shape = SubResource("shape")
+[node name="House3" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(16,16,80)
+scale = Vector3(20,32,18)
+[node name="Body" type="StaticBody3D" parent="House3"]
+[node name="Collision" type="CollisionShape3D" parent="House3/Body"]
+shape = SubResource("shape")
+[node name="House4" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(48,19,16)
+scale = Vector3(20,38,20)
+[node name="Body" type="StaticBody3D" parent="House4"]
+[node name="Collision" type="CollisionShape3D" parent="House4/Body"]
+shape = SubResource("shape")
+[node name="House5" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(48,17.5,48)
+scale = Vector3(12,35,21)
+[node name="Body" type="StaticBody3D" parent="House5"]
+[node name="Collision" type="CollisionShape3D" parent="House5/Body"]
+shape = SubResource("shape")
+[node name="House6" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(48,16,80)
+scale = Vector3(13,32,15)
+[node name="Body" type="StaticBody3D" parent="House6"]
+[node name="Collision" type="CollisionShape3D" parent="House6/Body"]
+shape = SubResource("shape")
+[node name="House7" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(80,27,16)
+scale = Vector3(13,54,12)
+[node name="Body" type="StaticBody3D" parent="House7"]
+[node name="Collision" type="CollisionShape3D" parent="House7/Body"]
+shape = SubResource("shape")
+[node name="House8" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(80,23.5,48)
+scale = Vector3(12,47,18)
+[node name="Body" type="StaticBody3D" parent="House8"]
+[node name="Collision" type="CollisionShape3D" parent="House8/Body"]
+shape = SubResource("shape")
+[node name="House9" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1")
+position = Vector3(80,15,80)
+scale = Vector3(15,30,12)
+[node name="Body" type="StaticBody3D" parent="House9"]
+[node name="Collision" type="CollisionShape3D" parent="House9/Body"]
+shape = SubResource("shape")

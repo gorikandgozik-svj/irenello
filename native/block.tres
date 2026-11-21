@@ -1,0 +1,4 @@
+[gd_resource type="BoxMesh" format=3]
+[ext_resource type="Material" path="res://facade.tres" id="1"]
+[resource]
+material = ExtResource("1")

@@ -1,0 +1,280 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SKERRY · Прибрежный массив</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10242a;color:#fff;font:14px system-ui,sans-serif}canvas#view{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}header,footer,.dock{position:fixed;z-index:1}header{left:0;right:0;top:0;padding:22px 4vw 44px;background:linear-gradient(#0c242c99,transparent);display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}.brand{font-weight:850;font-size:22px;letter-spacing:.12em}.brand b{color:#ffaf6e}.meter{font:12px monospace;background:#173237cc;padding:9px 12px;border-radius:4px}footer{bottom:0;left:0;right:0;padding:42px 4vw 22px;background:linear-gradient(transparent,#071b23df);pointer-events:none}h1{font:500 clamp(24px,5vw,58px) Georgia,serif;margin:0 0 5px}p{margin:5px 0}.dock{right:4vw;bottom:24px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}button,select{border:1px solid #d8e5e647;border-radius:5px;padding:9px 11px;background:#15343aeb;color:white;font:inherit;cursor:pointer}button:hover,select:hover{background:#34565b}button:disabled{opacity:.65}#hint{color:#e0e9eb;font-size:12px}#status{position:fixed;top:65px;right:4vw;max-width:85vw;background:#15343ae8;color:#fff;padding:8px;z-index:2}#status:empty{display:none}@media(max-width:820px){footer{bottom:55px;background:none;text-shadow:0 1px 5px #071b23}.dock{bottom:12px;left:3vw;right:3vw;justify-content:flex-start}button,select{font-size:12px;padding:8px}.meter{font-size:10px}}
+.travel{display:none;position:fixed;right:4vw;top:40%;gap:6px}.travel button{touch-action:none;user-select:none}@media(pointer:coarse){.travel{display:flex}}
+</style><canvas id="view"></canvas><header><span class="brand"><b>◩</b> SKERRY</span><span class="meter" id="meter">Загрузка рельефа…</span></header><footer><h1>Северный пролив</h1><p id="hint">Обзор — потяни экран · Полёт — WASD или стрелки</p></footer><div class="travel"><button id="advance" aria-label="Лететь вперёд">▲</button><button id="reverse" aria-label="Лететь назад">▼</button></div><div class="dock"><select id="quality" aria-label="Качество"><option value="auto">Авто</option><option value="low">Эконом</option><option value="mid">Баланс</option><option value="high">Детально</option></select><button id="fly">Облёт</button><button id="light">Закат</button><button id="home">К маяку</button><button id="shot">Кадр 6K ↓</button></div><output id="status" role="status"></output><script>
+// World units are metres. The origin is the middle of the inlet.
+function hash(x,z){
+  let n=Math.imul(x,374761393)+Math.imul(z,668265263)|0;
+  n=Math.imul(n^(n>>>13),1274126177);
+  return ((n^(n>>>16))>>>0)/4294967296;
+}
+function noise(x,z){
+  const i=Math.floor(x),j=Math.floor(z);
+  let u=x-i,v=z-j; u=u*u*(3-2*u);v=v*v*(3-2*v);
+  const a=hash(i,j),b=hash(i+1,j),c=hash(i,j+1),d=hash(i+1,j+1);
+  return (a+(b-a)*u)*(1-v)+(c+(d-c)*u)*v;
+}
+function height(x,z){
+  const coast=Math.abs(x-90*Math.sin(z*.004)-45*Math.sin(z*.009))-125;
+  let t=Math.max(0,Math.min(1,(coast+20)/490));t=t*t*(3-2*t);
+  const ridge=1-Math.abs(noise(x*.003+4,z*.003)-.5)*2;
+  const rock=noise(x*.018,z*.018)*22+noise(x*.052,z*.052)*6;
+  const headwall=Math.max(0,Math.min(1,(z-1120)/530));
+  const summit=headwall*headwall*(185+90*ridge+70*noise(x*.01,z*.01));
+  return summit-19+Math.min(1,Math.max(0,(coast+60)/130))*rock+t*(75+230*ridge+155*noise(x*.004,z*.004));
+}
+class Scene{
+  constructor(){this.objects=[];this.systems=[]}
+  add(mesh,position=[0,0,0],scale=[1,1,1]){const o={mesh,position,scale};this.objects.push(o);return o}
+  update(dt){for(const system of this.systems)system(dt,this)}
+}
+class Clock{
+  constructor(){this.acc=0}
+  tick(delta,update){this.acc+=Math.min(.1,Math.max(0,delta));while(this.acc+1e-10>=1/60){update(1/60);this.acc-=1/60}}
+}
+function terrainTile(x,z,size,steps){
+  const data=[],indices=[],stride=steps+1;
+  for(let j=0;j<=steps;j++)for(let i=0;i<=steps;i++){
+    const X=x+size*i/steps,Z=z+size*j/steps,Y=height(X,Z);
+    let nx=(height(X-2,Z)-height(X+2,Z))/4,nz=(height(X,Z-2)-height(X,Z+2))/4,k=Math.hypot(nx,1,nz);
+    data.push(X,Y,Z,nx/k,1/k,nz/k,0,0,0);
+    if(i<steps&&j<steps){const a=j*stride+i;indices.push(a,a+stride,a+1,a+1,a+stride,a+stride+1)}
+  }
+  // Skirts cover height differences at boundaries between mesh resolutions.
+  const edges=[[],[],[],[]];
+  for(let i=0;i<=steps;i++){edges[0].push(i);edges[1].push(steps*stride+i);edges[2].push(i*stride);edges[3].push(i*stride+steps)}
+  for(const edge of edges){
+    let prev=-1,top=-1;
+    for(const idx of edge){const k=data.length/9;data.push(...data.slice(idx*9,idx*9+9));data[k*9+1]-=22;
+      if(prev>=0)indices.push(prev,top,k,top,idx,k);prev=k;top=idx}
+  }
+  return {data,indices};
+}
+function towerMesh(){
+  const data=[],indices=[];
+  function ring(y,r,h,r2,c,n=32,dx=0,dz=0){
+    for(let i=0;i<n;i++){
+      let a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n,k=data.length/9;
+      for(const [ang,Y,R] of [[a,y,r],[b,y,r],[a,y+h,r2],[b,y+h,r2]]){
+        data.push(dx+Math.cos(ang)*R,Y,dz+Math.sin(ang)*R,Math.cos(ang),Math.max(0,(r-r2)/h),Math.sin(ang),...c)}
+      indices.push(k,k+1,k+2,k+1,k+3,k+2);
+    }
+  }
+  const red=[.67,.075,.035],ivory=[.82,.78,.65],iron=[.10,.14,.14];
+  ring(-6,7,8,6,[.32,.30,.25]);ring(2,5.3,13,4.2,ivory);ring(15,4.2,8,3.6,red);
+  ring(23,3.6,6,3.2,ivory);ring(29,4.6,1,4.6,iron);ring(30,4.6,.3,2.8,iron);
+  ring(30,2.8,4,2.8,[1,.76,.32]);ring(34,3.5,2.4,.24,red);ring(36.4,.22,2.4,.1,iron);
+  for(let i=0;i<12;i++){let a=i*Math.PI/6;ring(30,.12,4,.12,iron,6,2.85*Math.cos(a),2.85*Math.sin(a))}
+  return {data,indices}
+}
+
+const common=`
+precision highp float;
+uniform vec3 eye,forward,right,up,sun;
+uniform vec4 crop;
+uniform vec2 lens;
+uniform float time, mirror;
+float hash2(vec2 p){p=fract(p*vec2(.1031,.1030));p+=dot(p,p.yx+33.33);return fract((p.x+p.y)*p.x);}
+float n2(vec2 p){vec2 i=floor(p),u=fract(p);u=u*u*(3.-2.*u);
+return mix(mix(hash2(i),hash2(i+vec2(1,0)),u.x),mix(hash2(i+vec2(0,1)),hash2(i+1.),u.x),u.y);}
+vec3 haze(){return mix(vec3(.67,.71,.71),vec3(.91,.69,.49),clamp(.52-sun.y,0.,1.));}
+vec3 sky(vec3 r){
+ float s=max(dot(r,sun),0.),y=max(r.y,0.);
+ vec3 c=mix(haze(),vec3(.21,.42,.60),1.-exp(-y*3.8));
+ vec2 uv=r.xz/max(.055,y)*.65;
+ float cloud=.53*n2(uv)+.27*n2(uv*2.1)+.14*n2(uv*4.3)+.06*n2(uv*8.7);
+ c=mix(c,vec3(.92,.86,.76),smoothstep(.48,.74,cloud)*smoothstep(.015,.19,y)*.77);
+ return c+vec3(1.,.72,.38)*(.20*pow(s,10.)+.36*pow(s,180.)+smoothstep(.99976,.99996,s));
+}`;
+const screenVS='attribute vec2 p;varying vec2 uv;void main(){uv=p;gl_Position=vec4(p,0,1);}';
+const skyFS=common+`
+varying vec2 uv;uniform sampler2D reflection;uniform float reflected;
+void main(){
+ vec2 frame=uv*crop.xy+crop.zw;
+ vec3 r=normalize(forward+right*frame.x*lens.x+up*frame.y*lens.y);
+ vec3 c=sky(vec3(r.x,r.y*mirror,r.z));
+ if(mirror>0. && r.y<-.0001){
+  float d=-eye.y/r.y;vec2 w=eye.xz+r.xz*d;
+  float fade=exp(-d*.00085);
+  float wave=sin(w.y*.32+w.x*.08+time*1.4)+sin(w.y*.67-w.x*.12-time)*.4;
+  vec2 dist=vec2(n2(w*.042+time*.04)-.5,wave)*.007*fade;
+  vec3 refl=sky(reflect(r,vec3(0,1,0)));
+  if(reflected>.5)refl=texture2D(reflection,clamp(frame*.5+.5+dist,.001,.999)).rgb;
+  c=mix(vec3(.075,.235,.245),refl,.30+.64*pow(1.-abs(r.y),4.));
+  c+=vec3(.98,.76,.46)*pow(max(dot(reflect(r,normalize(vec3(dist.x*9.,1.,dist.y*5.))),sun),0.),130.)*.8;
+  c+=wave*.008*fade;
+ }
+ gl_FragColor=vec4(c,1.);
+}`;
+const meshVS=common+`
+attribute vec3 p,n,color;uniform vec3 origin,scale;varying vec3 wp,norm,base;
+void main(){wp=p*scale+origin;norm=n/scale;base=color;
+ vec3 rel=wp*vec3(1.,mirror,1.)-eye;float z=dot(rel,forward);
+ vec2 xy=vec2(dot(rel,right),dot(rel,up))/lens;
+ gl_Position=vec4((xy-z*crop.zw)/crop.xy,z*1.0001-.60,z);
+}`;
+const meshFS=common+`
+varying vec3 wp,norm,base;
+void main(){
+ if(wp.y<0.)discard;
+ vec3 N=normalize(norm),mat=base;
+ if(base.r==0.){
+  float f=n2(wp.xz*.045),g=n2(wp.xz*.23);
+  float strata=sin(wp.y*.63+wp.x*.17+f*4.);
+  vec2 rock=wp.xz+wp.y*vec2(.6,.35);float fissure=n2(rock*.11)+.4*n2(rock*.47);
+  N=normalize(N+vec3((fissure-.70)*.34,0.,(g-.5)*.32));
+  mat=mix(vec3(.29,.28,.265),vec3(.50,.46,.39),f*.75+g*.25)*(.92+.09*strata+.10*fissure);
+  mat=mix(mat,vec3(.30,.34,.20)*(.8+.35*f),smoothstep(.67,.90,N.y)*smoothstep(2.,18.,wp.y));
+  float snow=smoothstep(146.,161.,wp.y+108.*(N.y-.55)+f*42.+g*9.);
+  mat=mix(mat,vec3(.88,.90,.91),snow);
+  mat=mix(vec3(.23,.26,.24),mat,smoothstep(.15,4.,wp.y+f*.6));
+ }
+ float diffuse=max(dot(N,sun),0.);
+ vec3 c=mat*(vec3(.37,.44,.53)+diffuse*vec3(.80,.68,.50));
+ float fog=1.-exp(-length(wp-eye)*.00041);
+ gl_FragColor=vec4(mix(c,haze(),fog),1.);
+}`;
+
+class Renderer{
+ constructor(canvas){
+  this.gl=canvas.getContext('webgl',{antialias:false,alpha:false,preserveDrawingBuffer:false});
+  if(!this.gl)throw Error('Для сцены нужен браузер с WebGL.');
+  const gl=this.gl;
+  this.sky=this.program(screenVS,skyFS);this.land=this.program(meshVS,meshFS);
+  this.quad=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.quad);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  this.fallback=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.fallback);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,255]));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+  this.ref=gl.createTexture();this.fb=gl.createFramebuffer();this.depth=gl.createRenderbuffer();
+  gl.bindTexture(gl.TEXTURE_2D,this.ref);
+  for(const [p,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,p,v);
+  this.tiles=new Map();this.tris=0;
+ }
+ program(v,f){
+  const gl=this.gl,p=gl.createProgram(),u={},a={};
+  for(const [type,source] of [[gl.VERTEX_SHADER,v],[gl.FRAGMENT_SHADER,f]]){
+   const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);
+   if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));gl.attachShader(p,s);gl.deleteShader(s)}
+  gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(p));
+  for(let i=0;i<gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);i++){let name=gl.getActiveUniform(p,i).name;u[name]=gl.getUniformLocation(p,name)}
+  for(let i=0;i<gl.getProgramParameter(p,gl.ACTIVE_ATTRIBUTES);i++){let name=gl.getActiveAttrib(p,i).name;a[name]=gl.getAttribLocation(p,name)}
+  return {p,u,a}
+ }
+ mesh({data,indices}){
+  const gl=this.gl,v=gl.createBuffer(),i=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,v);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,i);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indices),gl.STATIC_DRAW);return {v,i,count:indices.length}
+ }
+ listTiles(cam,quality,terrain){
+  const gl=this.gl,used=new Set(),out=[],size=256;
+  if(terrain!==this.activeTerrain){for(const m of this.tiles.values()){gl.deleteBuffer(m.v);gl.deleteBuffer(m.i)}this.tiles.clear();this.activeTerrain=terrain}
+  if(!terrain)return out;
+  for(let z=terrain.zMin;z<terrain.zMax;z++)for(let x=terrain.xMin;x<terrain.xMax;x++){
+   const dx=(x+.5)*size-cam.eye[0],dz=(z+.5)*size-cam.eye[2],d=Math.hypot(dx,dz);
+   const front=dx*cam.forward[0]+dz*cam.forward[2];
+   if(d>540 && front < -200)continue;
+   const steps=d<620?quality.grid:d<1200?quality.grid/2:Math.max(4,quality.grid/4),key=[x,z,steps].join('/');
+   used.add(key);if(!this.tiles.has(key))this.tiles.set(key,this.mesh(terrain.build(x*size,z*size,size,steps)));
+   out.push(this.tiles.get(key))
+  }
+  for(const [k,m] of this.tiles)if(!used.has(k)){gl.deleteBuffer(m.v);gl.deleteBuffer(m.i);this.tiles.delete(k)}
+  return out
+ }
+ reflectSize(w,h){
+  const gl=this.gl;if(this.rw===w&&this.rh===h)return;this.rw=w;this.rh=h;
+  gl.bindTexture(gl.TEXTURE_2D,this.ref);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.bindRenderbuffer(gl.RENDERBUFFER,this.depth);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,w,h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,this.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,this.ref,0);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,this.depth);
+  if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw Error('Недоступен буфер отражений')
+ }
+ pass(cam,scene,tiles,time,mirror,crop,w,h,aspect,reflected){
+  const gl=this.gl;gl.viewport(0,0,w,h);gl.clear(gl.DEPTH_BUFFER_BIT);
+  const setup=pr=>{gl.useProgram(pr.p);const u=pr.u;
+   for(const k of ['eye','forward','right','up','sun'])if(u[k])gl.uniform3fv(u[k],cam[k]);
+   gl.uniform2f(u.lens,.55*aspect,.55);gl.uniform4fv(u.crop,crop);gl.uniform1f(u.mirror,mirror);if(u.time)gl.uniform1f(u.time,time)};
+  const attr=(loc,size,stride,offset)=>{gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,stride,offset)};
+  setup(this.sky);gl.disable(gl.DEPTH_TEST);gl.bindBuffer(gl.ARRAY_BUFFER,this.quad);attr(this.sky.a.p,2,0,0);
+  gl.bindTexture(gl.TEXTURE_2D,reflected ? this.ref : this.fallback);gl.uniform1f(this.sky.u.reflected,+reflected);gl.drawArrays(gl.TRIANGLES,0,3);gl.disableVertexAttribArray(this.sky.a.p);
+  setup(this.land);gl.enable(gl.DEPTH_TEST);const {a,u}=this.land;
+  const draw=m=>{gl.bindBuffer(gl.ARRAY_BUFFER,m.v);attr(a.p,3,36,0);attr(a.n,3,36,12);attr(a.color,3,36,24);
+   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.i);gl.drawElements(gl.TRIANGLES,m.count,gl.UNSIGNED_SHORT,0);this.tris+=m.count/3};
+  gl.uniform3f(u.origin,0,0,0);gl.uniform3f(u.scale,1,1,1);for(const tile of tiles)draw(tile);
+  for(const o of scene.objects){gl.uniform3fv(u.origin,o.position);gl.uniform3fv(u.scale,o.scale);draw(o.mesh)}
+  for(const loc of Object.values(a))gl.disableVertexAttribArray(loc)
+ }
+ frame(cam,scene,q,t,w,h,aspect=w/h,crop=[1,1,0,0],refresh=true){
+  const gl=this.gl,tiles=this.listTiles(cam,q,scene.terrain);this.tris=0;
+  if(q.reflect&&refresh){this.reflectSize(q.reflect,Math.max(1,Math.round(q.reflect/aspect)));gl.bindFramebuffer(gl.FRAMEBUFFER,this.fb);
+   this.pass(cam,scene,tiles,t,-1,[1,1,0,0],this.rw,this.rh,aspect,false)}
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);this.pass(cam,scene,tiles,t,1,crop,w,h,aspect,!!q.reflect)
+ }
+}
+
+const el=id=>document.getElementById(id),view=el('view'),statusLine=el('status');
+const profiles={low:{grid:16,reflect:0,width:800},mid:{grid:24,reflect:384,width:1440},high:{grid:40,reflect:768,width:2400}};
+function init(){
+ const renderer=new Renderer(view),scene=new Scene(),clock=new Clock(),keys=new Set();
+ scene.terrain={xMin:-6,xMax:6,zMin:-6,zMax:8,build:terrainTile};
+ const beacon=[-199,height(-199,140),140];scene.add(renderer.mesh(towerMesh()),beacon);
+ let x,y,z,yaw,pitch,flight=false,evening=false,t=0,busy=false,lost=false,phase=0;
+ function reset(){x=-12;y=51;z=-120;yaw=-.35;pitch=.040;phase=0;flight=false;el('fly').textContent='Облёт'}reset();
+ let auto='mid',avg=30,n=0,sum=0,last=0,gradeTime=0;
+ const getQ=()=>profiles[el('quality').value==='auto'?auto:el('quality').value];
+ function camera(){const a=Math.sin(yaw),b=Math.cos(yaw),c=Math.cos(pitch),d=Math.sin(pitch);
+  return {eye:[x,y,z],forward:[a*c,d,b*c],right:[b,0,-a],up:[-a*d,c,-b*d],sun:evening?[-.33,.19,.925]:[.65,.54,.535]}}
+ const clamp=(a,l,h)=>Math.min(h,Math.max(l,a));
+ scene.systems.push(dt=>{
+  t+=dt;
+  if(flight){phase+=dt*.055;x=beacon[0]+Math.sin(phase+1)*300;z=beacon[2]-Math.cos(phase+1)*300;
+   y=Math.max(height(x,z)+20,beacon[1]+70+15*Math.sin(phase));yaw=Math.atan2(beacon[0]-x,beacon[2]-z);pitch=Math.atan2(beacon[1]+18-y,300);return}
+  const f=(+keys.has('KeyW')||+keys.has('ArrowUp'))-(+keys.has('KeyS')||+keys.has('ArrowDown'));
+  const s=(+keys.has('KeyD')||+keys.has('ArrowRight'))-(+keys.has('KeyA')||+keys.has('ArrowLeft'));
+  const speed=dt*(keys.has('ShiftLeft')?160:60)/Math.max(1,Math.hypot(f,s));
+  x=clamp(x+speed*(Math.sin(yaw)*f+Math.cos(yaw)*s),-960,960);z=clamp(z+speed*(Math.cos(yaw)*f-Math.sin(yaw)*s),-950,1550);
+  y=clamp(y+(+keys.has('KeyE')-+keys.has('KeyQ'))*dt*48,Math.max(3,height(x,z)+3),650)
+ });
+ function stopFly(){flight=false;el('fly').textContent='Облёт'}
+ let drag=null;
+ view.onpointerdown=e=>{if(drag)return;stopFly();drag=[e.pointerId,e.clientX,e.clientY];view.setPointerCapture(e.pointerId)};
+ view.onpointermove=e=>{if(!drag||drag[0]!==e.pointerId)return;yaw-=(e.clientX-drag[1])*.004;pitch=clamp(pitch+(e.clientY-drag[2])*.004,-1.25,1.25);drag=[e.pointerId,e.clientX,e.clientY]};
+ view.onlostpointercapture=()=>drag=null;
+ onkeydown=e=>{if(e.target.tagName==='SELECT')return;if(/^(Key[WASDQE]|Arrow)/.test(e.code)){e.preventDefault();stopFly()}keys.add(e.code)};
+ onkeyup=e=>keys.delete(e.code);onblur=()=>keys.clear();
+ for(const [id,code] of [['advance','KeyW'],['reverse','KeyS']]){
+  const button=el(id);button.onpointerdown=e=>{e.preventDefault();stopFly();button.setPointerCapture(e.pointerId);keys.add(code)};
+  button.onlostpointercapture=()=>keys.delete(code)
+ }
+ el('fly').onclick=()=>{flight=!flight;el('fly').textContent=flight?'Пауза облёта':'Облёт'};el('home').onclick=reset;
+ el('light').onclick=()=>{evening=!evening;el('light').textContent=evening?'День':'Закат'};
+ function size(q){const w=Math.max(1,Math.round(Math.min(innerWidth*Math.min(devicePixelRatio,2),q.width,q.width*innerWidth/innerHeight)));
+  const h=Math.max(1,Math.round(w*innerHeight/innerWidth));if(view.width!==w||view.height!==h){view.width=w;view.height=h}}
+ view.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;statusLine.textContent='Графический контекст потерян. Ожидаем восстановления…'});
+ view.addEventListener('webglcontextrestored',()=>location.reload());
+ function loop(now){
+  if(lost)return;requestAnimationFrame(loop);if(busy||document.hidden){last=0;return}
+  const dt=last?(now-last)/1000:0;last=now;clock.tick(dt,d=>scene.update(d));
+  const q=getQ();size(q);renderer.frame(camera(),scene,q,t,view.width,view.height);
+  if(dt>0){n++;sum+=dt;gradeTime+=dt}
+  if(sum>=1){avg=1000*sum/n;el('meter').textContent=Math.round(1000/avg)+' FPS · '+view.width+'×'+view.height+' · '+Math.round(renderer.tris/1000)+'k треуг.';
+   if(el('quality').value==='auto'&&gradeTime>4){if(avg>38)auto=auto==='high'?'mid':'low';else if(avg<19)auto=auto==='low'?'mid':'high';gradeTime=0}n=0;sum=0}
+ }
+ el('shot').onclick=async()=>{
+  if(busy||lost)return;busy=true;el('shot').disabled=true;
+  const W=6144,H=3456,T=768,out=document.createElement('canvas');out.width=W;out.height=H;
+  try{const ctx=out.getContext('2d');if(!ctx)throw Error('Недостаточно памяти');
+   const cam=camera(),q=profiles.high,stamp=t;let first=true;
+   for(let j=0;j<H;j+=T){for(let i=0;i<W;i+=T){
+    if(lost)throw Error('Контекст потерян');const w=Math.min(T,W-i),h=Math.min(T,H-j);
+    if(view.width!==w)view.width=w;if(view.height!==h)view.height=h;
+    renderer.frame(cam,scene,q,stamp,w,h,W/H,[w/W,h/H,(2*i+w)/W-1,1-(2*j+h)/H],first);first=false;
+    ctx.drawImage(view,i,j)}
+    statusLine.textContent='Сборка 6K · '+Math.round(Math.min(H,j+T)/H*100)+'%';await new Promise(r=>setTimeout(r,0))}
+   const blob=await new Promise(r=>out.toBlob(r,'image/png'));if(!blob)throw Error('Ошибка кодирования PNG');
+   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Skerry-6144x3456.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+   statusLine.textContent='Кадр 6144 × 3456 готов';
+  }catch(e){statusLine.textContent=e.message}finally{out.width=out.height=1;busy=false;last=0;el('shot').disabled=false}
+ };
+ requestAnimationFrame(loop)
+}
+try{init()}catch(e){statusLine.textContent=e.message}
+
+</script></html>

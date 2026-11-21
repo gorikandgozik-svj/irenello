@@ -1,0 +1,48 @@
+mobile {
+  instances: 0,
+  calls: 21,
+  triangles: 14568,
+  shadowCalls: 21,
+  reflectionCalls: 0,
+  candidates: 0,
+  pipeline: 'forward'
+}
+aa {
+  instances: 0,
+  calls: 21,
+  triangles: 19036,
+  shadowCalls: 21,
+  reflectionCalls: 0,
+  candidates: 0,
+  pipeline: 'deferred',
+  lights: 56,
+  tileOverflow: 2755
+}
+ultra {
+  instances: 0,
+  calls: 21,
+  triangles: 35336,
+  shadowCalls: 21,
+  reflectionCalls: 0,
+  candidates: 0,
+  pipeline: 'deferred',
+  lights: 56,
+  tileOverflow: 10318
+}
+b'llvmpipe (LLVM 19.1.7, 256 bits)'
+Frame ms (driver replay): 1025.9
+Frame ms (driver replay): 62.0
+Frame ms (driver replay): 63.5
+Frame ms (driver replay): 64.9
+saved mobile RGBA SHA256 6d1ed6148c304bc047e0d6a6a1d9062c268d1771fe33a023bb7df3a7f268e6a5
+Frame ms (driver replay): 846.2
+Frame ms (driver replay): 223.1
+Frame ms (driver replay): 208.7
+Frame ms (driver replay): 213.3
+saved aa RGBA SHA256 93f87001fa84417bc89e3838b7900abb5f3aeb0096923e0f98af307cbbf16e50
+Frame ms (driver replay): 1106.5
+Frame ms (driver replay): 1042.0
+Frame ms (driver replay): 961.5
+Frame ms (driver replay): 1024.7
+saved ultra RGBA SHA256 c0fa25ecb64a8095bd09de3a0510c8bf7cb013c779ace666b293802bc93f2e3a
+saved cut RGBA SHA256 1fe121177971580eb69190890a08a095c219d67bdfb78fb4e615bf703ea50810

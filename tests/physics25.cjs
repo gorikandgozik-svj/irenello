@@ -1,0 +1,22 @@
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');
+const source=['math','physics','batches','scenery','sim','yard','airframe'].map(n=>fs.readFileSync(path.join(__dirname,'../src/'+n+'.js'),'utf8')).join('\n');
+vm.runInNewContext(source+`
+const close=(x,y,e=.001)=>assert(Math.abs(x-y)<e,x+' vs '+y);
+const floor=w=>w.add({position:[0,-.5,0],half:[12,.5,12],mass:0,friction:.7});
+let w=new PhysicsWorld(),ground=floor(w),b=w.add({position:[0,2,0],shape:'sphere',radius:.5,mass:2}),top=w.add({position:[3,1.7,0],mass:1});
+for(let i=0;i<240;i++)w.step(1/60);
+close(b.position[1],.5,.007);close(top.position[1],.5,.007);assert(b.grounded&&top.grounded);
+let hit=w.raycast([0,4,0],[0,-1,0],10);assert.equal(hit.body,b);close(hit.distance,3,.015);
+w=new PhysicsWorld({gravity:[0,0,0]});const a=w.add({position:[-1,0,0],velocity:[2,0,0],shape:'sphere',mass:2,bounce:1}),other=w.add({position:[1,0,0],shape:'sphere',mass:1,bounce:1});for(let i=0;i<90;i++)w.step(1/60);close(2*a.velocity[0]+other.velocity[0],4);assert(other.velocity[0]>2);
+w=new PhysicsWorld({gravity:[0,0,0],substeps:1});let wall=w.add({position:[0,0,0],half:[.012,1,1],mass:0});let ball=w.add({position:[-3,0,0],shape:'sphere',radius:.06,velocity:[400,0,0],continuous:true,bounce:1});w.step(1/60);assert(ball.position[0]<-.05&&ball.velocity[0]<0);
+assert.equal(w.sweepSphere([-3,1.08,1.08],[6,0,0],.1,{staticOnly:true}),null);
+close(w.sweepSphere([-3,0,0],[6,0,0],.1,{staticOnly:true}).t,(3-.112)/6);
+w=new PhysicsWorld();floor(w);let box=w.add({shape:'obb',position:[0,1.9,0],half:[.6,.40,.3],rotation:[0,0,Math.sin(.2),Math.cos(.2)],mass:3});
+box.impulse([0,0,4],[.45,.2,0]);assert(Math.hypot(...box.spin)>.1);for(let i=0;i<180;i++)w.step(1/60);assert(box.position[1]>.28&&box.position[1]<.8);close(Math.hypot(...box.rotation),1);
+let anchor=w.add({position:[4,5,0],mass:0}),load=w.add({position:[4,2,0],shape:'sphere',mass:1});w.spring(anchor,load,1,80,8);for(let i=0;i<240;i++)w.step(1/60);close(load.position[1],5-1-9.81/80,.04);
+const f=airForces(130,0,.09,.6),g=airForces(260,0,.09,.6);close(g.lift/f.lift,4);assert(airForces(130,5000,.09,.6).lift<f.lift);assert(airForces(130,0,.55,.6).lift<airForces(130,0,.24,.6).lift);
+const yard=new ServiceYard();for(let i=0;i<90;i++)yard.step(1/60,new Set());assert(yard.player.grounded);const y=yard.player.position[1];yard.step(1/60,new Set(['Space']));assert(yard.player.position[1]>y);
+const sample=[0,0,-8,1,1,0,1, 0,0,16,1,1,0,1, 0,0,-80,1,1,0,1];const field=new InstanceField([1],[2],new Float32Array(sample),{lod:25,distance:150});
+let bins=field.select(basis([0,0,0],[0,0,-1]),.5,1,false,[0,0,0]);assert.equal(bins.length,2);assert.equal(bins.reduce((s,b)=>s+b.records.length/7,0),2);
+console.log('OK: static and dynamic contacts, restitution, rest, ray hit, swept sphere against thin wall, rounded corner miss, OBB impulse, spring, lift/drag/stall, jump, frustum/LOD.');
+`,{assert,console});

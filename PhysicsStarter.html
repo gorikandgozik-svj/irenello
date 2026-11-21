@@ -1,0 +1,17 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SKERRY · Физическая сцена</title><style>body{margin:0;background:#10212b;color:white;font:16px system-ui}canvas{width:100vw;height:100vh;display:block}button,output{position:fixed;top:20px;left:20px;background:#193540;color:white;border:1px solid #adc1c6;padding:12px}output{top:75px}output:empty{display:none}</style><canvas></canvas><button>Приложить импульс</button><output></output><script src="SkerrySDK.js"></script><script>
+(async()=>{
+ const {Game,GameNode,Geometry,basis}=SKERRY;
+ const game=new Game(document.querySelector('canvas')),world=game.world,physics=world.enablePhysics();
+ world.camera=basis([6,4,8],[0,1,0]);world.focus=[0,1,0];
+ async function add(name,config,color,size){
+  const mesh=new Geometry(),material={color,rough:.55,metal:.12};
+  if(config.shape==='sphere')mesh.ellipsoid(material,[0,0,0],[.5,.5,.5],24,16);else mesh.box(material,[0,0,0],[1,1,1]);
+  const node=world.root.attach(new GameNode(name,await game.upload(mesh)));
+  node.scale=size;node.body=physics.add(config);return node.body
+ }
+ await add('Основание',{half:[5,.2,5],mass:0,position:[0,-.2,0]},[.19,.25,.24],[10,.4,10]);
+ const box=await add('Контейнер',{shape:'obb',mass:3,half:[.55,.55,.55],position:[0,1.1,0]},[.64,.19,.054],[1.1,1.1,1.1]);
+ await add('Шар',{shape:'sphere',mass:1,radius:.38,position:[.65,3,0],continuous:true,bounce:.65},[.16,.37,.53],[.76,.76,.76]);
+ document.querySelector('button').onclick=()=>box.impulse([1,9,-1],[.34,.1,.13]);game.start();
+})().catch(e=>document.querySelector('output').textContent=e.message);
+</script></html>

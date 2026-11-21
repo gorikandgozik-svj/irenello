@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),assert=require('node:assert/strict');
+const context=vm.createContext({});
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../SkerrySDK.js'),'utf8'),context);
+const {GameNode,GameWorld,M}=context.SKERRY;
+const world=new GameWorld(),base=world.root.attach(new GameNode('base')),child=base.attach(new GameNode('mesh',[{}]));
+base.position=[2,0,0];base.scale=[2,3,4];child.position=[1,1,1];assert.deepEqual(Array.from(M.point(world.state().objects[0].model,[0,0,0])),[4,3,4]);
+assert.throws(()=>child.attach(base));base.visible=false;assert.equal(world.state().objects.length,0);
+world.root.attach(child);assert.equal(world.state().objects.length,1);
+let t=0;world.systems.add(dt=>t+=dt);world.update(.125);assert.equal(t,.125);child.detach();assert.equal(world.state().objects.length,0);
+console.log('OK: standalone SDK, transforms, cycle rejection, visibility, reparenting, updates.');

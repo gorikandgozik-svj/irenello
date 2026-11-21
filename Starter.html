@@ -1,0 +1,16 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SKERRY · SDK Starter</title>
+<style>body{margin:0;background:#172934;color:white;font:15px system-ui}canvas{width:100vw;height:100vh;display:block}label,output{position:fixed;top:14px;left:14px;background:#18303de8;border-radius:6px;padding:10px}output{top:64px}output:empty{display:none}</style><canvas id="surface"></canvas><label>Открыть свою модель GLB <input id="open" type="file" accept=".glb"></label><output id="error"></output>
+<script src="SkerrySDK.js"></script><script>
+(async function(){
+ const {Game,GameNode,basis}=SKERRY,game=new Game(document.querySelector('canvas')),world=game.world;
+ const anchor=world.root.attach(new GameNode('Поворотный стол'));
+ const floor=await game.upload({parts:[{vertices:[-4,0,-4,0,1,0,0,0,4,0,-4,0,1,0,1,0,4,0,4,0,1,0,1,1,-4,0,4,0,1,0,0,1],indices:[0,1,2,0,2,3],mat:{color:[.16,.18,.19],metal:.12,rough:.6}}]});
+ world.root.attach(new GameNode('Основание',floor));world.camera=basis([3,2,5],[0,.55,0]);
+ let model=null;world.systems.add((dt,w)=>{const a=w.t*.16;anchor.rotation=[0,Math.sin(a),0,Math.cos(a)]});
+ game.start();document.querySelector('#open').onchange=async e=>{try{const file=e.target.files[0];if(!file)return;
+ const parts=await game.load(new Uint8Array(await file.arrayBuffer()));
+ if(model){model.detach();game.renderer.free(model.parts);game.assets.delete(model.parts)}
+ model=anchor.attach(new GameNode(file.name,parts));document.querySelector('#error').textContent=''
+ }catch(err){document.querySelector('#error').textContent=err.message}};
+})().catch(e=>document.querySelector('#error').textContent=e.message)
+</script></html>
